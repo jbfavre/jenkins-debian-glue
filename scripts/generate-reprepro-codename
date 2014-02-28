@@ -52,6 +52,10 @@ fi
 # repository/codename that should be added
 REPOS="$1"
 
+if [ -z "${REPO_CODENAME:-}" ] ; then
+  REPO_CODENAME=${REPOS}
+fi
+
 JENKINS_DEBIAN_GLUE_VERSION=$(dpkg --list jenkins-debian-glue 2>/dev/null | awk '/^ii/ {print $3}')
 if [ -n "${JENKINS_DEBIAN_GLUE_VERSION:-}" ] ; then
   echo "*** Running jenkins-debian-glue version $JENKINS_DEBIAN_GLUE_VERSION ***"
@@ -86,14 +90,14 @@ fi
 (
 flock --timeout 5 9 || bailout 1 "Error: could not lock file ${REPOSITORY}/conf/distributions, giving up."
 
-if grep -q "^\(Codename\|Suite\): ${REPOS}$" "${REPOSITORY}"/conf/distributions ; then
-  echo "Codename/repository $REPOS exists already, ignoring request to add again."
+if grep -q "^\(Codename\|Suite\): ${REPO_CODENAME}$" "${REPOSITORY}"/conf/distributions ; then
+  echo "Codename/repository ${REPO_CODENAME} exists already, ignoring request to add again."
   exit 0
 fi
 
 cat >> "${REPOSITORY}"/conf/distributions << EOF
 
-Codename: ${REPOS}
+Codename: ${REPO_CODENAME}
 Architectures: ${ARCHITECTURES}
 Components: ${COMPONENTS}
 EOF
@@ -109,7 +113,7 @@ if [ -n "${KEY_ID:-}" ] ; then
   printf "SignWith: ${KEY_ID}\n" >> "${REPOSITORY}"/conf/distributions
 fi
 
-echo "Added $REPOS as new codename/repos to the reprepro configuration."
+echo "Added ${REPO_CODENAME} as new codename/repos to the reprepro configuration."
 
 ) 9>/var/lock/jdg-generate-reprepro-codename."$(id -un)" || bailout 1 "Error while generating reprepro codename/repos."
 
