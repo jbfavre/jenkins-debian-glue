@@ -182,6 +182,7 @@ dist_and_arch_settings() {
     [ -n "${distribution}" ] || distribution="sid"  # fallback to "sid" iff lsb_release fails
     local DIST="$distribution"
   fi
+  REPO_CODENAME=${DIST}
 
   # if COWBUILDER_DIST is set it overrides distribution then
   if [ -n "${COWBUILDER_DIST:-}" ]; then
@@ -620,7 +621,7 @@ release_repos() {
     local REPOSITORY="${REPOSITORY}/release/${release}"
   fi;
 
-  mkdir -p "${REPOSITORY}/incoming/${release}"
+  mkdir -p "${REPOSITORY}/incoming/${REPO_CODENAME}"
   mkdir -p "${REPOSITORY}/conf"
 
   if [ "${REMOVE_FROM_RELEASE:-}" = 'true' ]; then
@@ -628,25 +629,25 @@ release_repos() {
     REPOS="${release}" remove_packages
   fi
 
-  cp "${WORKSPACE}/binaries/"* "${REPOSITORY}/incoming/${release}/"
+  cp "${WORKSPACE}/binaries/"* "${REPOSITORY}/incoming/${REPO_CODENAME}/"
   [ $? -eq 0 ] || bailout 1 "Error: Failed to copy binary packages to release directory."
 
-  REPOSITORY=$REPOSITORY generate-reprepro-codename "${release}"
+  REPO_CODENAME="${REPO_CODENAME}" REPOSITORY="${REPOSITORY}" generate-reprepro-codename "${release}"
 
   # lock access to file to avoid duplicate entries when two build-and-provide-package
   # runs happen at the very same time with regard to conf/incoming setup
   (
   flock --timeout 5 9 || bailout 1 "Error: could not lock file ${REPOSITORY}/conf/incoming, giving up."
 
-  if ! grep -q "^Name: $release$" "${REPOSITORY}/conf/incoming" 2>/dev/null ; then
+  if ! grep -q "^Name: ${REPO_CODENAME}$" "${REPOSITORY}/conf/incoming" 2>/dev/null ; then
     cat >> "${REPOSITORY}/conf/incoming" << EOF
 
-Name: $release
-IncomingDir: incoming/$release
+Name: ${REPO_CODENAME}
+IncomingDir: incoming/${REPO_CODENAME}
 TempDir: tmp
 LogDir: log
 MorgueDir: ${REPOSITORY}/morgue
-Default: $release
+Default: ${REPO_CODENAME}
 Cleanup: unused_files on_deny on_error
 
 EOF
@@ -654,14 +655,14 @@ EOF
   ) 9>/var/lock/jdg-build-and-provide-incoming."$(id -un)" || bailout 1 "Error while setting up incoming repository."
 
   local old_dir=$(pwd)
-  cd "${REPOSITORY}/incoming/${release}"
+  cd "${REPOSITORY}/incoming/${REPO_CODENAME}"
   ${SUDO_CMD:-} reprepro -v -b "${REPOSITORY}" --waitforlock 1000 --ignore=wrongdistribution \
-                processincoming "${release}" "$(basename ${WORKSPACE}/binaries/*.changes)"
+                processincoming "${REPO_CODENAME}" "$(basename ${WORKSPACE}/binaries/*.changes)"
   local RC=$?
   cd "$old_dir"
 
   if [ $RC -ne 0 ] ; then
-    bailout 1 "Error: Failed to execute processincoming for release ${release}."
+    bailout 1 "Error: Failed to execute processincoming for release ${REPO_CODENAME}."
   fi
 }
 
