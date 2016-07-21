@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# workaround so that WORKSPACE is defined
+WORKSPACE=$(pwd)
+
 if [ -z ${JENKINS_DEBIAN_GLUE_QUIET:-} ]; then
   set -x
 fi
@@ -164,8 +167,8 @@ bailout() {
   if [ "${SKIP_BINARY_REMOVAL:-}" = "true" ] ; then
     echo "*** Skipping binary removal as requested via SKIP_BINARY_REMOVAL=true. ***"
   else
-    echo "*** Getting rid of files in $WORKSPACE/binaries/ to avoid problems in next run. ***"
-    rm -f "$WORKSPACE"/binaries/*
+    echo "*** Getting rid of files in $WORKSPACE/${BASE_PATH}/ to avoid problems in next run. ***"
+    rm -f "$WORKSPACE"/${BASE_PATH}/*
   fi
 
   ${SUDO_CMD:-} rm -rf /tmp/apt-$$
@@ -880,7 +883,7 @@ reprepro_wrapper() {
   echo "*** Including packages in repository $REPOS ***"
   ${SUDO_CMD:-} ${REPREPRO_CMD} -b "${REPOSITORY}" ${REPREPRO_OPTS} \
     --ignore=wrongdistribution --ignore=uploaders --ignore=surprisingbinary \
-    include "${REPOS}" "${WORKSPACE}/binaries/"*"_${newest_version}"_${architecture}.changes
+    include "${REPOS}" "${WORKSPACE}/${BASE_PATH}/"*"_${newest_version}"_${architecture}.changes
   [ $? -eq 0 ] || bailout 1 "Error: Failed to include binary package in $REPOS repository."
 }
 
