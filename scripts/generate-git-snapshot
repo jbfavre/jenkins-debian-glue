@@ -26,10 +26,11 @@ if [ -z "${BUILD_NUMBER:-}" ] ; then
   exit 1
 fi
 
-if [ -z "${GIT_COMMIT:-}" ] ; then
-  echo "No GIT_COMMIT defined, please run it with git-plugin in jenkins. ">&2
-  exit 1
-fi
+# Temporarily workaround for https://issues.jenkins-ci.org/browse/JENKINS-35230
+#if [ -z "${GIT_COMMIT:-}" ] ; then
+#  echo "No GIT_COMMIT defined, please run it with git-plugin in jenkins. ">&2
+#  exit 1
+#fi
 
 # since git-buildpackage >=0.6.24 only the gbp command is available
 if [ -x "$(which gbp)" ] ; then
@@ -487,7 +488,7 @@ fi
 # revert to original debian/changelog to avoid merge conflicts
 git checkout -- $(readlink -f debian/changelog)
 
-git checkout -f ${GIT_BRANCH} # switch back to previous "branch" before removing the tmp branch
+git checkout -f ${branch} # switch back to previous "branch" before removing the tmp branch
 git branch -D "$random_branch"
 
 # vim:foldmethod=marker ts=2 ft=sh ai expandtab sw=2
